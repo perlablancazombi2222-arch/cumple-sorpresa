@@ -1,0 +1,131 @@
+<!DOCTYPE html>
+<html lang="es">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover">
+<title>Capítulo 3</title>
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+<link href="https://fonts.googleapis.com/css2?family=Cormorant+Garamond:ital,wght@0,500;0,600;1,500&display=swap" rel="stylesheet">
+<style>
+:root{
+  --bg:#1c2230; --ink:#f3ead8; --muted:#a9a393; --gold:#d2ad6a; --err:#e58b7a;
+  --field:#262e40; --line:#3a4560;
+}
+@media (prefers-color-scheme: light){
+  :root{ --bg:#f3ead8; --ink:#1c2230; --muted:#5d6272; --gold:#8a6420; --err:#a3392a; --field:#fbf6ea; --line:#cdbf9f; }
+}
+*{box-sizing:border-box}
+html,body{height:100%;margin:0}
+body{
+  background:var(--bg);color:var(--ink);
+  font-family:"Cormorant Garamond",Georgia,"Times New Roman",serif;
+  font-size:1.2rem;line-height:1.5;
+  display:flex;justify-content:center;
+  padding:env(safe-area-inset-top,0) 1.25rem env(safe-area-inset-bottom,0);
+}
+main{width:100%;max-width:30rem;padding:3rem 0 2.5rem;display:flex;flex-direction:column;gap:1.5rem}
+h1{font-size:2.4rem;line-height:1.1;font-weight:600;margin:0}
+p{margin:0}
+.muted{color:var(--muted)}
+label{display:block;margin-bottom:.5rem}
+input{
+  width:100%;font:inherit;font-size:1.8rem;letter-spacing:.35em;text-align:center;
+  color:var(--ink);background:var(--field);border:1px solid var(--line);border-radius:.4rem;
+  padding:.8rem .5rem;
+}
+input:focus-visible,button:focus-visible{outline:2px solid var(--gold);outline-offset:2px}
+button{
+  font:inherit;font-weight:600;font-size:1.2rem;cursor:pointer;
+  background:var(--gold);color:#1c2230;border:0;border-radius:.4rem;padding:.8rem 1.4rem;margin-top:.9rem;width:100%;
+}
+#msg{min-height:1.6em;color:var(--err);margin-top:.6rem}
+.shake{animation:shake .35s}
+@keyframes shake{25%{transform:translateX(-6px)}75%{transform:translateX(6px)}}
+@media (prefers-reduced-motion: reduce){.shake{animation:none}}
+.video{position:relative;aspect-ratio:16/9;background:#000;border-radius:.4rem;overflow:hidden}
+.video iframe,.video video{position:absolute;inset:0;width:100%;height:100%;border:0}
+.clue{border-left:3px solid var(--gold);padding-left:1rem;font-style:italic;font-size:1.35rem}
+[hidden]{display:none!important}
+</style>
+</head>
+<body>
+<main>
+  <section id="lock">
+    <h1>Viena te guarda un secreto</h1>
+    <p class="muted" style="margin-top:.8rem">Solo quien recuerda cuándo empezó la aventura puede seguir.</p>
+    <form id="form" style="margin-top:1.8rem" autocomplete="off">
+      <label for="code">Clave de 8 cifras (día, mes y año)</label>
+      <input id="code" inputmode="numeric" pattern="[0-9]*" maxlength="8" placeholder="········" autofocus>
+      <button type="submit">Abrir</button>
+      <p id="msg" role="alert"></p>
+    </form>
+  </section>
+
+  <section id="open" hidden>
+    <h1>Lo que vivimos en Viena</h1>
+    <div class="video" style="margin-top:1.4rem" id="videoBox"></div>
+    <p class="clue" style="margin-top:1.6rem" id="clue"></p>
+  </section>
+</main>
+
+<script>
+/* ====== CONFIGURA ESTO ====== */
+// Hash SHA-256 de la clave 27022026 (la clave no aparece escrita en el código)
+const CODE_HASH = "5b271c992d08df540960e4f24965f44375c5262d5b1531391b7942346504b8c4";
+
+// Opción A: vídeo de YouTube NO LISTADO. Pega solo el ID (lo que va tras "v=").
+const YOUTUBE_ID = "";
+// Opción B: vídeo MP4 subido junto a esta página (por ejemplo "viena.mp4").
+const MP4_FILE = "felicidades.mp4";
+
+// Pista que aparece debajo del vídeo (por si el vídeo no la incluye o falla)
+const CLUE = "Busca a quien no tiene boca y canta, no tiene pies y te hace bailar, y guarda la banda sonora de nuestra historia.";
+/* ============================ */
+
+const $ = id => document.getElementById(id);
+
+async function sha256(text){
+  const buf = await crypto.subtle.digest("SHA-256", new TextEncoder().encode(text));
+  return [...new Uint8Array(buf)].map(b => b.toString(16).padStart(2,"0")).join("");
+}
+
+function showVideo(){
+  const box = $("videoBox");
+  if (MP4_FILE){
+    box.innerHTML = '<video controls playsinline autoplay src="'+MP4_FILE+'"></video>';
+  } else if (YOUTUBE_ID){
+    box.innerHTML = '<iframe src="https://www.youtube-nocookie.com/embed/'+YOUTUBE_ID+'?rel=0&playsinline=1" allow="autoplay; encrypted-media; fullscreen" allowfullscreen title="Vídeo"></iframe>';
+  } else {
+    box.hidden = true;
+  }
+  $("clue").textContent = CLUE;
+}
+
+function unlock(){
+  $("lock").hidden = true;
+  $("open").hidden = false;
+  showVideo();
+  try { sessionStorage.setItem("ok","1"); } catch(e){}
+}
+
+$("form").addEventListener("submit", async e => {
+  e.preventDefault();
+  const value = $("code").value.replace(/\D/g,"");
+  if (value.length !== 8){
+    $("msg").textContent = "Son 8 cifras: día, mes y año.";
+    return;
+  }
+  if (await sha256(value) === CODE_HASH){
+    unlock();
+  } else {
+    $("msg").textContent = "Esa no es. Piensa en el día en que salimos de viaje.";
+    $("code").classList.remove("shake"); void $("code").offsetWidth; $("code").classList.add("shake");
+    $("code").select();
+  }
+});
+
+try { if (sessionStorage.getItem("ok")) unlock(); } catch(e){}
+</script>
+</body>
+</html>
